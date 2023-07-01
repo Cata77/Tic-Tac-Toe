@@ -2,7 +2,7 @@ import random
 from exception import CoordinatesError, OccupiedCellError, EmptyInputError
 
 commands = ['start', 'user']
-difficulty = ['easy', 'medium']
+difficulty = ['easy', 'medium', 'hard']
 
 
 def print_matrix(matrix):
@@ -44,7 +44,8 @@ def check_empty_cells_remaining(matrix):
 
 
 def check_if_logic_move_is_possible(matrix: list[list[str]],
-        free_cells: list[tuple[int, int]], player_symbol: str, opponent_symbol: str) -> bool:
+                                    free_cells: list[tuple[int, int]], player_symbol: str,
+                                    opponent_symbol: str) -> bool:
     copy_free_cells = list(free_cells)
 
     while len(copy_free_cells):
@@ -64,6 +65,46 @@ def check_if_logic_move_is_possible(matrix: list[list[str]],
         matrix[x][y] = ' '
         copy_free_cells.remove((x, y))
     return False
+
+
+def ai_easy_move(free_cells, matrix, player_turn):
+    x, y = random.choice(free_cells)
+    free_cells.remove((x, y))
+    matrix[x][y] = 'X' if player_turn % 2 == 1 else 'O'
+    print_matrix(matrix)
+
+
+def minimax(matrix: list[list[str]], is_maximizing: bool, player_symbol: str,
+            opponent_symbol: str):
+    if check_state_of_game(matrix)[1] == player_symbol:
+        return 1
+    elif check_state_of_game(matrix)[1] == opponent_symbol:
+        return -1
+    elif not check_empty_cells_remaining(matrix):
+        return 0
+
+    if is_maximizing:
+        best_score = -800
+        for x in range(3):
+            for y in range(3):
+                if matrix[x][y] == ' ':
+                    matrix[x][y] = player_symbol
+                    score = minimax(matrix, False, player_symbol, opponent_symbol)
+                    matrix[x][y] = ' '
+                    if score > best_score:
+                        best_score = score
+        return best_score
+    else:
+        best_score = 800
+        for x in range(3):
+            for y in range(3):
+                if matrix[x][y] == ' ':
+                    matrix[x][y] = opponent_symbol
+                    score = minimax(matrix, True, player_symbol, opponent_symbol)
+                    matrix[x][y] = ' '
+                    if score < best_score:
+                        best_score = score
+        return best_score
 
 
 def user_move(matrix: list[list[str]], free_cells: list[tuple[int, int]], player_turn: int) -> int:
@@ -98,10 +139,7 @@ def user_move(matrix: list[list[str]], free_cells: list[tuple[int, int]], player
 def ai_move(matrix: list[list[str]], free_cells: list[tuple[int, int]], difficulty: str, player_turn: int) -> int:
     if difficulty == 'easy':
         print('Making move level "easy"')
-        x, y = random.choice(free_cells)
-        free_cells.remove((x, y))
-        matrix[x][y] = 'X' if player_turn % 2 == 1 else 'O'
-        print_matrix(matrix)
+        ai_easy_move(free_cells, matrix, player_turn)
         return player_turn + 1
     elif difficulty == 'medium':
         print('Making move level "medium"')
@@ -115,11 +153,34 @@ def ai_move(matrix: list[list[str]], free_cells: list[tuple[int, int]], difficul
         if check_if_logic_move_is_possible(matrix, free_cells, player_symbol, opponent_symbol):
             return player_turn + 1
         else:
-            x, y = random.choice(free_cells)
-            free_cells.remove((x, y))
-            matrix[x][y] = 'X' if player_turn % 2 == 1 else 'O'
-            print_matrix(matrix)
+            ai_easy_move(free_cells, matrix, player_turn)
             return player_turn + 1
+    elif difficulty == 'hard':
+        print('Making move level "hard"')
+        if player_turn % 2 == 1:
+            player_symbol = 'X'
+            opponent_symbol = 'O'
+        else:
+            player_symbol = 'O'
+            opponent_symbol = 'X'
+        best_score = -800
+        best_move = (-1, -1)
+
+        for x in range(3):
+            for y in range(3):
+                if matrix[x][y] == ' ':
+                    matrix[x][y] = player_symbol
+                    score = minimax(matrix, False, player_symbol, opponent_symbol)
+                    matrix[x][y] = ' '
+                    if score > best_score:
+                        best_score = score
+                        best_move = x, y
+
+        x, y = best_move
+        matrix[x][y] = player_symbol
+        free_cells.remove(best_move)
+        print_matrix(matrix)
+        return player_turn + 1
 
 
 def choose_game_mode(player1: str, player2: str):
